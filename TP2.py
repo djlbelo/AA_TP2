@@ -11,9 +11,12 @@ from tp2_aux import *
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.plotting import scatter_matrix
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.decomposition import PCA
 from sklearn.decomposition import KernelPCA
 from sklearn.manifold import Isomap
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import SpectralClustering
 from sklearn.cluster import KMeans
@@ -43,25 +46,35 @@ def isometric_mapping(x):
     data = isomap.transform(x)    
     return data
 
+# clusters
 def hierarchical_cluster(data):
     labels = AgglomerativeClustering(n_clusters=3).fit_predict(data)
+    
     plt.title("Hierarchical scatter")
     plt.scatter(data[:, 0], data[:, 1], c=labels)
     plt.show()
     
+    return labels
+    
 def spectral_cluster(data):
     labels = SpectralClustering(n_clusters=3,assign_labels='cluster_qr').fit_predict(data)
+    
     plt.title("Spectral scatter")
     plt.scatter(data[:, 0], data[:, 1], c=labels)
     plt.show()
     
+    return labels
     
 def kMeans_cluster(data):
     labels = KMeans(n_clusters=3).fit_predict(data)
+    
     plt.title("Kmeans scatter")
     plt.scatter(data[:, 0], data[:, 1], c=labels)
     plt.show()
     
+    return labels
+    
+#data
 def getData():
     try:
         data = np.load('features.npz')
@@ -73,37 +86,59 @@ def getData():
         x_iso = isometric_mapping(x)
         total_features = np.append(x_pca, np.append(x_kPCA, x_iso, axis=1), axis=1)
         np.savez('features.npz', x = total_features)
-    return total_features
+    return total_features, x_pca, x_kPCA, x_iso
 
 def select_features(features):
     #should be double?
-    mat = np.loadtxt('labels.txt', delimiter=',', dtype='double');
+    mat = np.loadtxt('labels.txt', delimiter=',', dtype='int');
     #matrix
     mx = mat[mat[:,1]>0,:][:,0]
     labels = mat[mat[:,1]>0,:,1]
     
-    f, prob = f_classif(X[mx,],labels)
+    #fazer data frame ou
+    #new_x = SelectKBest(f_classif, k=2).fit_transform(x, y)
+    #plot_iris(new_x, y, "Best_K_classify")
+    
+    f, prob = f_classif(features[mx,],labels)
     
     bestFeatures = features[:,f>19]
-    bestLabelled = best_features[mat[:,1]>0,:]
+    #necessary?
+    bestLabelled = best_Features[mat[:,1]>0,:]
     
-    return bestFeatures, labels, bestLabelled, f[f>19]
+    return bestFeatures
+
+def feature_mean_stdv(bestFeatures):
+    bestFeatures = bestFeatures[:,0:-1:]
+    meanFeats = np.mean(bestFeatures,0);
+    stdevFeats = np.std(bestFeatures,0);
+    return bestFeatures, meanFeats, stdevFeats
+
+def getDistances(mat,k):
+    kneighbors = KNeighborsClassifier(n_neighbors=k)
+    kneighbors.fit(mat, np.zeros(mat.shape[0]))
+    neigh_dist, neigh_ind = kneighbors.kneighbors(return_distance=True)
+    dist_graph = np.zeros([mat.shape[0]])
+    for ix in range(0,mat.shape[0]):
+        dist_graph[ix]=neigh_dist[ix][k-1]
+    np.ndarray.sort(dist_graph)
+    return dist_graph[::-1]
     
-features = getData()
-bestFeatures, labels, bestLabelled, f = select_features(features)
-bestFeats = pd.DataFrame(bestFeatures)
+features, pca_data, kernel_pca_data, isometric_data = getData()
+bestFeatures = select_features(features)
+bestFeatures, meanFeats, stdevFeats = feature_mean_stdv(bestFeatures)
+stdBestFeatures = (bestFeatures-meanFeats)/stdevFeats;
 
-#scatter matrix
-#to-do
+# should be 5?
+dbsGraph = getDistances(stdBestFeatures, 5)
 
-labels = get_labels_from_txt()
-data = tp2_aux.images_as_matrix()
-#print(labels)
-
-pca_data = fit_pca(data)
-kernel_pca_data =  fit_kernel_pca(data)
-isometric_data = isometric_mapping(data)
-
+#ids
+ids = np.zeros(dbsGraph.shape[0])
+for ix in range(0, len(ids)):
+    ids[ix] = ix
+    
+#missing preformance and labels
+    
+#clusters
 hierarchical_cluster(pca_data)
 hierarchical_cluster(kernel_pca_data)
 hierarchical_cluster(isometric_data)
@@ -116,7 +151,7 @@ kMeans_cluster(pca_data)
 kMeans_cluster(kernel_pca_data)
 kMeans_cluster(isometric_data)
 
-# report clusters, missing matrix, labels
+# report clusters, missing labels
 report_clusters(ids, labels, "file_.html")
 report_clusters(ids, labels, "file_.html")
 report_clusters(ids, labels, "file_.html")
