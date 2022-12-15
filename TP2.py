@@ -88,53 +88,42 @@ def getData():
         np.savez('features.npz', x = total_features)
     return total_features, x_pca, x_kPCA, x_iso
 
-def select_features(features):
+def select_features(total_features):
     #should be double?
     mat = np.loadtxt('labels.txt', delimiter=',', dtype='int');
+    
     #matrix
-    mx = mat[mat[:,1]>0,:][:,0]
-    labels = mat[mat[:,1]>0,:,1]
+    labels = mat[mat[:,1] != 0]
+    labeled_data = np.array([total_features[int(i)] for i in labels[:,0]])
     
-    #fazer data frame ou
-    #new_x = SelectKBest(f_classif, k=2).fit_transform(x, y)
-    #plot_iris(new_x, y, "Best_K_classify")
+    #f-value to choose in the 18 features
+    f, prob = f_classif(labeled_data,labels[:,1])
+    print(f)
+    print(prob)
+    #how many features?
+    bestFeatures = SelectKBest(f_classif,k=5)
     
-    f, prob = f_classif(features[mx,],labels)
+    X_idx = bestFeatures.get_support()
+    total_features = total_features[:,X_idx]
     
-    bestFeatures = features[:,f>19]
-    #necessary?
-    bestLabelled = best_Features[mat[:,1]>0,:]
-    
-    return bestFeatures
+    return total_features, bestFeatures, labels
 
 def feature_mean_stdv(bestFeatures):
-    bestFeatures = bestFeatures[:,0:-1:]
-    meanFeats = np.mean(bestFeatures,0);
-    stdevFeats = np.std(bestFeatures,0);
-    return bestFeatures, meanFeats, stdevFeats
+    auxBestFeatures = bestFeatures[:,0:-1:]
+    meanFeats = np.mean(auxBestFeatures,0);
+    stdevFeats = np.std(auxBestFeatures,0);
+    return meanFeats, stdevFeats
 
-def getDistances(mat,k):
-    kneighbors = KNeighborsClassifier(n_neighbors=k)
-    kneighbors.fit(mat, np.zeros(mat.shape[0]))
-    neigh_dist, neigh_ind = kneighbors.kneighbors(return_distance=True)
-    dist_graph = np.zeros([mat.shape[0]])
-    for ix in range(0,mat.shape[0]):
-        dist_graph[ix]=neigh_dist[ix][k-1]
-    np.ndarray.sort(dist_graph)
-    return dist_graph[::-1]
     
 features, pca_data, kernel_pca_data, isometric_data = getData()
-bestFeatures = select_features(features)
-bestFeatures, meanFeats, stdevFeats = feature_mean_stdv(bestFeatures)
-stdBestFeatures = (bestFeatures-meanFeats)/stdevFeats;
+features, bestFeatures, labels = select_features(features)
 
-# should be 5?
-dbsGraph = getDistances(stdBestFeatures, 5)
+#standardized best features
+meanFeats, stdevFeats = feature_mean_stdv(bestFeatures)
+bestFeatures = (bestFeatures-meanFeats)/stdevFeats;
 
 #ids
-ids = np.zeros(dbsGraph.shape[0])
-for ix in range(0, len(ids)):
-    ids[ix] = ix
+ids = labels[:,0]
     
 #missing preformance and labels
     
