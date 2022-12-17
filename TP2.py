@@ -56,8 +56,8 @@ def hierarchical_cluster(data):
     
     return labels
     
-def spectral_cluster(data):
-    labels = SpectralClustering(n_clusters=3,assign_labels='cluster_qr').fit_predict(data)
+def spectral_cluster(data, n_cluster):
+    labels = SpectralClustering(n_clusters=n_cluster,assign_labels='cluster_qr').fit_predict(data)
     
     plt.title("Spectral scatter")
     plt.scatter(data[:, 0], data[:, 1], c=labels)
@@ -65,7 +65,7 @@ def spectral_cluster(data):
     
     return labels
     
-def kMeans_cluster(data):
+def kMeans_cluster(data, n_cluster):
     labels = KMeans(n_clusters=3).fit_predict(data)
     
     plt.title("Kmeans scatter")
@@ -103,8 +103,8 @@ def select_features(total_features):
     #how many features?
     bestFeatures = SelectKBest(f_classif,k=5)
     
-    X_idx = bestFeatures.get_support()
-    total_features = total_features[:,X_idx]
+    mat_idx = bestFeatures.get_support()
+    total_features = total_features[:,mat_idx]
     
     return total_features, bestFeatures, labels
 
@@ -126,6 +126,7 @@ bestFeatures = (bestFeatures-meanFeats)/stdevFeats;
 ids = labels[:,0]
     
 #missing preformance and labels
+
     
 #clusters
 hierarchical_cluster(pca_data)
@@ -140,7 +141,10 @@ kMeans_cluster(pca_data)
 kMeans_cluster(kernel_pca_data)
 kMeans_cluster(isometric_data)
 
-# report clusters, missing labels
-report_clusters(ids, labels, "file_.html")
+# report clusters kMeans
+n_cluster = int(input("Number of clusters for KMEAN?"))
+labels_kmeans = kMeans_cluster(bestFeatures, n_clusters = n_cluster)
+report_clusters(ids, labels_kmeans, "KMEANS-" + str(n_cluster) + ".html")
+
 report_clusters(ids, labels, "file_.html")
 report_clusters(ids, labels, "file_.html")
