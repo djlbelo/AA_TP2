@@ -15,6 +15,7 @@ from pandas.plotting import scatter_matrix
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.decomposition import PCA
 from sklearn.decomposition import KernelPCA
+from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import Isomap
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cluster import AgglomerativeClustering
@@ -119,27 +120,21 @@ features, pca_data, kernel_pca_data, isometric_data = getData()
 features, bestFeatures, labels = select_features(features)
 
 #standardized best features
-meanFeats, stdevFeats = feature_mean_stdv(bestFeatures)
-bestFeatures = (bestFeatures-meanFeats)/stdevFeats;
+scaler = StandardScaler
+bestFeatures = scaler.fit_transform(bestFeatures)
 
 #ids
 ids = labels[:,0]
     
 #missing preformance and labels
 
-    
+
 #clusters
-hierarchical_cluster(pca_data)
-hierarchical_cluster(kernel_pca_data)
-hierarchical_cluster(isometric_data)
+hierarchical_cluster(bestFeatures)
 
-spectral_cluster(pca_data)
-spectral_cluster(kernel_pca_data)
-spectral_cluster(isometric_data)
+spectral_cluster(bestFeatures)
 
-kMeans_cluster(pca_data)
-kMeans_cluster(kernel_pca_data)
-kMeans_cluster(isometric_data)
+kMeans_cluster(bestFeatures)
 
 # report clusters kMeans
 n_cluster = int(input("Number of clusters for KMEAN?"))
