@@ -21,6 +21,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import SpectralClustering
 from sklearn.cluster import KMeans
+from sklearn import metrics
 
 
 def fit_pca(x):
@@ -76,27 +77,35 @@ def kMeans_cluster(data, n_cluster):
     
     return labels
 
-def kmeans_predition(data, labels):
-    labels_t = labels[labels>0]
+def cluster_predition(data, labels, clusterType):
     performance = [[],[],[],[],[]]
     bestScore = 0
     bestK = 0
     
     #check range
     
-    for k in range(2,40):
-        kmeans = KMeans(n_clusters = k).fit(data)
-        predict = kmeans.predict(data)
-        labels_pred = predict[labels>0]
+    for k in range(2,20):
+        if clusterType == 'kMeans':
+            predict = KMeans(n_clusters = k).fit_predict(data)
+            plot_title = 'K-Means Analysis'
+        elif clusterType == 'hierarchical':
+            predict = AgglomerativeClustering(n_clusters = k).fit_predict(data)
+            plot_title = 'Hierarchical agglomerative Analysis'
+        elif clusterType == 'spectral':
+            predict = SpectralClustering(n_clusters = k, assign_labels='cluster_qr').fit_predict(data)
+            plot_title = 'Spectral Analysis'
+        else:
+            print("No Cluster type recognized")
+            return
         
         tp = tn = fp = fn = 0
 
-        N = labels_t.shape[0]
+        N = labels.shape[0]
     
         for x in range(N):
             for y in range(x+1,N):
-                same_cluster = labels_pred[x] == labels_pred[y]
-                same_group = labels_t[x] == labels_t[y]
+                same_cluster = predict[x] == predict[y]
+                same_group = labels[x] == labels[y]
 
                 tp += np.sum(np.logical_and(same_cluster, same_group))
                 tn += np.sum(np.logical_and(np.logical_not(same_cluster), np.logical_not(same_group)))
@@ -104,7 +113,7 @@ def kmeans_predition(data, labels):
                 fn += np.sum(np.logical_and(np.logical_not(same_cluster), same_group))
         
         #check purity        
-        purity = (1/N)*(tp)
+        purity = purity_score(labels, predict)
         
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
@@ -121,22 +130,26 @@ def kmeans_predition(data, labels):
         performance[3].append(f1)
         performance[4].append(rand)
     
-    print("Best score {} and best k {}".format(bestScore, bestK))
+    print("Best score for {}: {} and best k {}".format(clusterType, bestScore, bestK))
     kmeans = KMeans(n_clusters=bestK).fit(data)
     predictY = kmeans.predict(data)
-    report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, "kmeans.html")    
+    report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, clusterType+".html")    
     
-    plot_clusters('K-Means Analysis', 'clusters (k)', range(2,40), performance)
+    plot_clusters(plot_title, 'clusters (k)', range(2,20), performance)
+
+def purity_score(labels, predict):
+    contingency_matrix = metrics.cluster.contingency_matrix(labels, predict)
+    return np.sum(np.amax(contingency_matrix, axis=0)) / np.sum(contingency_matrix) 
 
 def plot_clusters(title, xlabel, xaxis, performance):
     
     plt.title(title)
     plt.xlabel(xlabel)
-    plt.plot(xaxis, perfomance[0], label='Purity')
-    plt.plot(xaxis, perfomance[1], label='Precision')
-    plt.plot(xaxis, perfomance[2], label='Recall')
-    plt.plot(xaxis, perfomance[3], label='F1 Measure')
-    plt.plot(xaxis, perfomance[4], label='Rand Index')
+    plt.plot(xaxis, performance[0], label='Purity')
+    plt.plot(xaxis, performance[1], label='Precision')
+    plt.plot(xaxis, performance[2], label='Recall')
+    plt.plot(xaxis, performance[3], label='F1 Measure')
+    plt.plot(xaxis, performance[4], label='Rand Index')
     
     plt.legend()
     plt.savefig(title, dpi=300)
@@ -153,31 +166,10 @@ def getData(x_pca, x_kPCA, x_iso):
         np.savez('features.npz', x = total_features)
     return total_features
 
-def select_features(total_features, kF):
-    #should be double?
-    mat = np.loadtxt('labels.txt', delimiter=',', dtype='int');
-    
-    #matrix
-    labels = mat[mat[:,1] != 0]
-    labeled_data = np.array([total_features[int(i)] for i in labels[:,0]])
-    
-    #f-value to choose in the 18 features
-    f, prob = f_classif(labeled_data,labels[:,1])
-    print(f)
-    print(prob)
-    #how many features?
-    bestFeatures = SelectKBest(f_classif,k=kF)
-    
-    mat_idx = bestFeatures.get_support()
-    total_features = total_features[:,mat_idx]
-    
-    return total_features, bestFeatures, labels
-
-def feature_mean_stdv(bestFeatures):
-    auxBestFeatures = bestFeatures[:,0:-1:]
-    meanFeats = np.mean(auxBestFeatures,0);
-    stdevFeats = np.std(auxBestFeatures,0);
-    return meanFeats, stdevFeats
+def get_data_set(features, labels):
+    labeled_labels = labels[labels[:,1] != 0]
+    labeled_features = labeled_data = np.array([features[int(i)] for i in labeled_labels[:,0]])
+    return labeled_labels, labeled_features
 
 x = images_as_matrix()
 x_pca = fit_pca(x)
@@ -185,31 +177,21 @@ x_kPCA = fit_kernel_pca(x)
 x_iso = isometric_mapping(x)
   
 features = getData(x_pca, x_kPCA, x_iso)
-n_features = int(input("Number of features to select?"))
-features, bestFeatures, labels = select_features(features, k=n_features)
+labels = np.loadtxt('labels.txt', delimiter=',', dtype='int')
 
-#standardized best features
-scaler = StandardScaler
-bestFeatures = scaler.fit_transform(bestFeatures)
+means = np.mean(features,axis=0)
+stdevs = np.std(features,axis=0)
+features = (features-means)/stdevs
 
-#ids
-ids = labels[:,0]
-    
-#missing preformance and labels
-kmeans_predition(bestFeatures, labels[:, 1])
+labeled_labels, labeled_features = get_data_set(features, labels)
 
 #clusters
-hierarchical_cluster(bestFeatures)
+#hierarchical_cluster(features, 3)
 
-spectral_cluster(bestFeatures)
+#spectral_cluster(features, 3)
 
-kMeans_cluster(bestFeatures)
+cluster_predition(labeled_features, labeled_labels[:, 1], 'kMeans')
 
-# report clusters kMeans
-n_cluster = int(input("Number of clusters for KMEAN?"))
-kmeans = kMeans_cluster(n_clusters = n_cluster)
-labels_kmeans = kmeans.predict(bestFeatures)
-report_clusters(ids, labels_kmeans, "KMEANS-" + str(n_cluster) + ".html")
+cluster_predition(labeled_features, labeled_labels[:, 1], 'hierarchical')
 
-report_clusters(ids, labels, "file_.html")
-report_clusters(ids, labels, "file_.html")
+cluster_predition(labeled_features, labeled_labels[:, 1], 'spectral')
