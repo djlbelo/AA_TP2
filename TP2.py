@@ -104,13 +104,10 @@ def cluster_predition(data, labels, clusterType):
     
         for x in range(N):
             for y in range(x+1,N):
-                same_cluster = predict[x] == predict[y]
-                same_group = labels[x] == labels[y]
-
-                tp += np.sum(np.logical_and(same_cluster, same_group))
-                tn += np.sum(np.logical_and(np.logical_not(same_cluster), np.logical_not(same_group)))
-                fp += np.sum(np.logical_and(same_cluster, np.logical_not(same_group)))
-                fn += np.sum(np.logical_and(np.logical_not(same_cluster), same_group))
+                tp += np.sum(np.logical_and(predict[x] == predict[y], labels[x] == labels[y]))
+                tn += np.sum(np.logical_and(np.logical_not(predict[x] == predict[y]), np.logical_not(labels[x] == labels[y])))
+                fp += np.sum(np.logical_and(predict[x] == predict[y], np.logical_not(labels[x] == labels[y])))
+                fn += np.sum(np.logical_and(np.logical_not(predict[x] == predict[y]), labels[x] == labels[y]))
         
         #check purity        
         purity = purity_score(labels, predict)
@@ -185,10 +182,6 @@ features = (features-means)/stdevs
 
 labeled_labels, labeled_features = get_data_set(features, labels)
 
-#clusters
-#hierarchical_cluster(features, 3)
-
-#spectral_cluster(features, 3)
 
 cluster_predition(labeled_features, labeled_labels[:, 1], 'kMeans')
 
