@@ -77,12 +77,10 @@ def kMeans_cluster(data, n_cluster):
     
     return labels
 
-def cluster_predition(data, labels, clusterType):
+def cluster_evaluation(data, labels, clusterType):
     performance = [[],[],[],[],[]]
     bestScore = 0
     bestK = 0
-    
-    #check range
     
     for k in range(2,20):
         if clusterType == 'kMeans':
@@ -108,8 +106,7 @@ def cluster_predition(data, labels, clusterType):
                 tn += np.sum(np.logical_and(np.logical_not(predict[x] == predict[y]), np.logical_not(labels[x] == labels[y])))
                 fp += np.sum(np.logical_and(predict[x] == predict[y], np.logical_not(labels[x] == labels[y])))
                 fn += np.sum(np.logical_and(np.logical_not(predict[x] == predict[y]), labels[x] == labels[y]))
-        
-        #check purity        
+               
         purity = purity_score(labels, predict)
         
         precision = tp / (tp + fp)
@@ -128,11 +125,33 @@ def cluster_predition(data, labels, clusterType):
         performance[4].append(rand)
     
     print("Best score for {}: {} and best k {}".format(clusterType, bestScore, bestK))
-    kmeans = KMeans(n_clusters=bestK).fit(data)
-    predictY = kmeans.predict(data)
-    report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, clusterType+".html")    
-    
     plot_clusters(plot_title, 'clusters (k)', range(2,20), performance)
+    
+    return bestK
+
+def bissectingKmeans(data, n):
+    performance = []
+    ids = np.zeros(data.shape[0])
+    for i in range(0, data.shape[0]):
+        performance.append([])
+        ids[i] = i
+    
+    maxSize = data
+    for i in range(0,n):
+        labels = KMeans(n_clusters=2).fit_predict(data)
+        for j in range(0,maxSize.shape[0]):
+            performance[int(ids[j])].append(labels[j])
+            
+        n0 = np.count_nonzero(labels==0)
+        n1 = np.count_nonzero(labels==1)
+        if n0>=n1:
+            maxSize = maxSize[labels==0,:]
+            ids = ids[labels==0]
+        else:
+            maxSize = maxSize[labels==1,:]
+            ids = ids[labels==1]
+            
+    return performance
 
 def purity_score(labels, predict):
     contingency_matrix = metrics.cluster.contingency_matrix(labels, predict)
@@ -168,6 +187,7 @@ def get_data_set(features, labels):
     labeled_features = labeled_data = np.array([features[int(i)] for i in labeled_labels[:,0]])
     return labeled_labels, labeled_features
 
+#data handling and feature reduction
 x = images_as_matrix()
 x_pca = fit_pca(x)
 x_kPCA = fit_kernel_pca(x)
@@ -176,15 +196,29 @@ x_iso = isometric_mapping(x)
 features = getData(x_pca, x_kPCA, x_iso)
 labels = np.loadtxt('labels.txt', delimiter=',', dtype='int')
 
+#standardization
 means = np.mean(features,axis=0)
 stdevs = np.std(features,axis=0)
 features = (features-means)/stdevs
 
+#filtering by labelled data
 labeled_labels, labeled_features = get_data_set(features, labels)
 
+#best k for each algorithm and performance plotting
+bestKmeans = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'kMeans')
+bestKhier = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'hierarchical')
+bestKspectral = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'spectral')
 
-cluster_predition(labeled_features, labeled_labels[:, 1], 'kMeans')
+#html reports
+predictY = KMeans(n_clusters=bestKmeans).fit_predict(features)
+report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, "kMeans.html")
 
-cluster_predition(labeled_features, labeled_labels[:, 1], 'hierarchical')
+predictX = AgglomerativeClustering(n_clusters=bestKhier).fit_predict(features)
+report_clusters(np.array(list(range(0, predictX.shape[0]))), predictX, "hierarchical.html")     
 
-cluster_predition(labeled_features, labeled_labels[:, 1], 'spectral')
+predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_qr').fit_predict(features)
+report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
+
+
+label_lists = bissectingKmeans(labeled_features, 2)
+report_clusters_hierarchical(list(range(0, label_lists.shape[0])), label_lists, "BissectingKMeans.html")
