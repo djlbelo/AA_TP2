@@ -99,7 +99,7 @@ def cluster_evaluation(data, labels, clusterType):
         tp = tn = fp = fn = 0
 
         N = labels.shape[0]
-    
+
         for x in range(N):
             for y in range(x+1,N):
                 tp += np.sum(np.logical_and(predict[x] == predict[y], labels[x] == labels[y]))
@@ -124,7 +124,8 @@ def cluster_evaluation(data, labels, clusterType):
         performance[3].append(f1)
         performance[4].append(rand)
     
-    print("Best score for {}: {} and best k {}".format(clusterType, bestScore, bestK))
+    print("\n\nBest k for {}: {}".format(clusterType, bestK))
+    print("Best score for {}: {}".format(clusterType, bestScore))
     plot_clusters(plot_title, 'clusters (k)', range(2,20), performance)
     
     return bestK
@@ -174,12 +175,7 @@ def plot_clusters(title, xlabel, xaxis, performance):
     
 #data
 def getData(x_pca, x_kPCA, x_iso):
-    try:
-        data = np.load('features.npz')
-        total_features = data['x']
-    except IOError:
-        total_features = np.append(x_pca, np.append(x_kPCA, x_iso, axis=1), axis=1)
-        np.savez('features.npz', x = total_features)
+    total_features = np.append(x_pca, np.append(x_kPCA, x_iso, axis=1), axis=1)
     return total_features
 
 def get_data_set(features, labels):
@@ -204,10 +200,26 @@ features = (features-means)/stdevs
 #filtering by labelled data
 labeled_labels, labeled_features = get_data_set(features, labels)
 
+f, prob = f_classif(labeled_features, labeled_labels[:,1])
+print(f)
+print(prob)
+
+plt.plot(range(f.shape[0]), f, "x")
+delim = 5
+plt.plot([0, f.shape[0]], [delim, delim])
+plt.savefig("f-test", dpi=200)
+plt.show()
+plt.close()
+
+kbest = SelectKBest(f_classif, k=4)
+x_features = kbest.fit_transform(labeled_features, labeled_labels[:,1])
+x_id = kbest.get_support()
+features = features[:,x_id]
+
 #best k for each algorithm and performance plotting
-bestKmeans = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'kMeans')
-bestKhier = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'hierarchical')
-bestKspectral = cluster_evaluation(labeled_features, labeled_labels[:, 1], 'spectral')
+bestKmeans = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'kMeans')
+bestKhier = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'hierarchical')
+bestKspectral = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'spectral')
 
 #html reports
 predictY = KMeans(n_clusters=bestKmeans).fit_predict(features)
@@ -220,5 +232,5 @@ predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_q
 report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
 
 
-label_lists = bissectingKmeans(labeled_features, 2)
-report_clusters_hierarchical(list(range(0, label_lists.shape[0])), label_lists, "BissectingKMeans.html")
+#label_lists = bissectingKmeans(labeled_features, 2)
+#report_clusters_hierarchical(list(range(0, label_lists.shape[0])), label_lists, "BissectingKMeans.html")
