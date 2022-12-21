@@ -201,5 +201,5 @@ predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_q
 report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
 
 
-label_lists = bissectingKmeans(features, 2)
+label_lists = bissectingKmeans(features, 4)
 report_clusters_hierarchical(list(range(0, len(label_lists))), label_lists, "BissectingKMeans.html")

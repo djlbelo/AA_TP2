@@ -12,34 +12,50 @@ QUESTIONS:
 
 
 Q1: After extracting the attributes, did you standardize or normalize the values? Justify your decision.
-R1:
+R1:Our decision was to standardize the values to ensure that, by having the features in the same unity and on an
+even playing field, the predictions and the clusters calculations wouldn't be influenced by disperce values.
 
 
 Q2: Explain how you found the parameters for the clustering algorithms.
-R2:
-
+R2:We filtered the labelled data into the the sets we were working with.
+Then, with the A-NOVA F-test we computed the best classification value for each feature.
+Knowing the best features do select, we filtered the labelled indexes.
+Then, for each clustering algorithm, we evaluated the purity, precision, recall, f1 and random index to find the
+best parameters.
 
 
 Q3: Describe your analysis of the parameters using the internal and external indicators referred in the assignment page. Include the  plots for the indicator values ​​(indicating the image name of each plot in one line in your answer) as a function of the parameters and explain how you chose the ranges for examining these parameters. Indicate, with justification, what conclusions you can draw from this analysis.
-R3:
+R3: With the plots "Spectral Analysis.png", K-Means "Analysis.png",
+ "Hierarchical agglomerative Analysis.png", we were able to identify to each algorithm the best
+ number of clusters and its´ best scores. As we explained in the previous anwser, and thanks to the
+ known purity score, we can note on the generated plots that for certain ranges the rand index values 
+stagnate. We decided the appropriate range based would be starting from 2 to 20.
 
 
 Q4: Select some of the parameter values ​​tested in the question above and examine the corresponding clusters more closely, generating the HTML file with the images. Explain how you selected these parameter values, discuss the different options and propose a recommendation that could help the biologists' task of classifying cells and rejecting segmentation errors.
-R4:
+R4: With the reduced features, we proceeded to compute the predicted values with each algorithm,
+then with the results of each distribuiton we generated the html files with the indexes and labels that resulted
+from these computations. With these generated files, biologists could base their classification in a 
+larger number of groups (more detail) or in a smaler sample.
+
 
 
 Q5: Discuss advantages or problems with the algorithms analysed for the purpose of helping biologists to organize these images, considering your theoretical knowledge of these algorithms as well as the results you obtained in your work.
-R5:
+R5: With these algorithms there is the possibility for biologists to base their classifying on more or
+less complex number of features, choosing the most convenient algorithm. A disadvange could be the saturation
+of groups it generates creating some possible ambiguity among them.
 
 
 Q6: Consider other clustering algorithms embedded in the Scikit-Learn library. Choose one and apply it to this problem, optimizing the parameters you deem appropriate in the way that you find adequate. Justify your choices and discuss whether this option would yield more useful results for biologists.
-R6:
+R6: 
 
 
 (Optional) Q7: Explain how you selected the best attributes for the clustering phase. In particular, indicate the visualization methods used to explore the extracted attributes and any statistical tests used.
-R7:
+R7: We used the same attribute selection as the first algorithms, we used the f_classif to select the best
+attributes with the SelectKbest from sklearn.
 
 
 (Optional) Q8: Implement the Bissecting K-Means hierarchical clustering algorithm as described in the assignment page and Lecture 19. Examine and discuss the results and their application to the problem of helping the biologists select and classify cell images.
-R8:
+R8: We found that this algorithm is faster, and it can split the biologists data into groups instead of 
+forming groups by joining each one.
 
