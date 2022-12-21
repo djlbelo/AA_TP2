@@ -27,55 +27,23 @@ from sklearn import metrics
 def fit_pca(x):
     x = x - x.mean()
     pca = PCA(n_components=6)
-    #podemos dar só data = pca.fit_transform(x) ?
     pca.fit(x)
     data = pca.transform(x)
-    #print(pca.explained_variance_ratio_.cumsum()) cumulative sum of variance
     return data
 
 def fit_kernel_pca(x):
     x = x - x.mean()
-    kernel_pca = KernelPCA(n_components=6, kernel='rbf') #Error in n_component
-    #podemos dar só data = kernel_pca.fit_transform(x)
+    kernel_pca = KernelPCA(n_components=6, kernel='rbf')
     kernel_pca.fit(x)
     data = kernel_pca.transform(x)
     return data
     
 def isometric_mapping(x):
     isomap = Isomap(n_components=6)
-    #podemos dar só data = isomap.fit_transform(x) ?
     isomap.fit(x)
     data = isomap.transform(x)    
     return data
-
-# clusters
-def hierarchical_cluster(data, n_cluster):
-    labels = AgglomerativeClustering(n_clusters = n_cluster).fit_predict(data)
-    
-    plt.title("Hierarchical scatter")
-    plt.scatter(data[:, 0], data[:, 1], c=labels)
-    plt.show()
-    
-    return labels
-    
-def spectral_cluster(data, n_cluster):
-    labels = SpectralClustering(n_clusters = n_cluster, assign_labels='cluster_qr').fit_predict(data)
-    
-    plt.title("Spectral scatter")
-    plt.scatter(data[:, 0], data[:, 1], c=labels)
-    plt.show()
-    
-    return labels
-    
-
-def kMeans_cluster(data, n_cluster):
-    labels = KMeans(n_clusters = n_cluster).fit_predict(data)
         
-    plt.title("Kmeans scatter")
-    plt.scatter(data[:, 0], data[:, 1], c=labels)
-    plt.show()
-    
-    return labels
 
 def cluster_evaluation(data, labels, clusterType):
     performance = [[],[],[],[],[]]
@@ -139,9 +107,10 @@ def bissectingKmeans(data, n):
     
     maxSize = data
     for i in range(0,n):
-        labels = KMeans(n_clusters=2).fit_predict(data)
-        for j in range(0,maxSize.shape[0]):
+        labels = KMeans(n_clusters=2).fit_predict(maxSize)
+        for j in range(0,maxSize.shape[0]): 
             performance[int(ids[j])].append(labels[j])
+        
             
         n0 = np.count_nonzero(labels==0)
         n1 = np.count_nonzero(labels==1)
@@ -201,8 +170,8 @@ features = (features-means)/stdevs
 labeled_labels, labeled_features = get_data_set(features, labels)
 
 f, prob = f_classif(labeled_features, labeled_labels[:,1])
-print(f)
-print(prob)
+#print(f)
+#print(prob)
 
 plt.plot(range(f.shape[0]), f, "x")
 delim = 5
@@ -232,5 +201,5 @@ predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_q
 report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
 
 
-#label_lists = bissectingKmeans(labeled_features, 2)
-#report_clusters_hierarchical(list(range(0, label_lists.shape[0])), label_lists, "BissectingKMeans.html")
+label_lists = bissectingKmeans(features, 2)
+report_clusters_hierarchical(list(range(0, len(label_lists))), label_lists, "BissectingKMeans.html")
