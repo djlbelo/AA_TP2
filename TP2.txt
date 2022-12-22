@@ -47,7 +47,9 @@ of groups it generates creating some possible ambiguity among them.
 
 
 Q6: Consider other clustering algorithms embedded in the Scikit-Learn library. Choose one and apply it to this problem, optimizing the parameters you deem appropriate in the way that you find adequate. Justify your choices and discuss whether this option would yield more useful results for biologists.
-R6: 
+R6: We decided to use the OPTICS algorithm and we tried different min_samples parameter and scored each one
+with the same metrics as the previous algorithms and we concluded that this algorithm is worst then the others,
+due to the fact that this algorithm is based on dencity of samples.
 
 
 (Optional) Q7: Explain how you selected the best attributes for the clustering phase. In particular, indicate the visualization methods used to explore the extracted attributes and any statistical tests used.
