@@ -99,21 +99,23 @@ def cluster_evaluation(data, labels, clusterType):
     return bestK
 
 def bissectingKmeans(data, n):
-    performance = []
+    clusters = []
     ids = np.zeros(data.shape[0])
+    
     for i in range(0, data.shape[0]):
-        performance.append([])
+        clusters.append([])
         ids[i] = i
     
     maxSize = data
-    for i in range(0,n):
+    for i in range(0,n):    
         labels = KMeans(n_clusters=2).fit_predict(maxSize)
-        for j in range(0,maxSize.shape[0]): 
-            performance[int(ids[j])].append(labels[j])
         
+        for j in range(0,maxSize.shape[0]): 
+            clusters[int(ids[j])].append(labels[j])
             
         n0 = np.count_nonzero(labels==0)
         n1 = np.count_nonzero(labels==1)
+        
         if n0>=n1:
             maxSize = maxSize[labels==0,:]
             ids = ids[labels==0]
@@ -121,7 +123,7 @@ def bissectingKmeans(data, n):
             maxSize = maxSize[labels==1,:]
             ids = ids[labels==1]
             
-    return performance
+    return clusters
 
 def purity_score(labels, predict):
     contingency_matrix = metrics.cluster.contingency_matrix(labels, predict)
@@ -152,54 +154,65 @@ def get_data_set(features, labels):
     labeled_features = labeled_data = np.array([features[int(i)] for i in labeled_labels[:,0]])
     return labeled_labels, labeled_features
 
-#data handling and feature reduction
-x = images_as_matrix()
-x_pca = fit_pca(x)
-x_kPCA = fit_kernel_pca(x)
-x_iso = isometric_mapping(x)
-  
-features = getData(x_pca, x_kPCA, x_iso)
-labels = np.loadtxt('labels.txt', delimiter=',', dtype='int')
+def get_features_and_labels():
+    #data handling and feature reduction
+    x = images_as_matrix()
+    x_pca = fit_pca(x)
+    x_kPCA = fit_kernel_pca(x)
+    x_iso = isometric_mapping(x)
+      
+    features = getData(x_pca, x_kPCA, x_iso)
+    labels = np.loadtxt('labels.txt', delimiter=',', dtype='int')
 
-#standardization
-means = np.mean(features,axis=0)
-stdevs = np.std(features,axis=0)
-features = (features-means)/stdevs
+    #standardization
+    means = np.mean(features,axis=0)
+    stdevs = np.std(features,axis=0)
+    features = (features-means)/stdevs
+    return features, labels
 
-#filtering by labelled data
-labeled_labels, labeled_features = get_data_set(features, labels)
+def select_best_features(labeled_labels, labeled_features):
+    f, prob = f_classif(labeled_features, labeled_labels[:,1])
 
-f, prob = f_classif(labeled_features, labeled_labels[:,1])
-#print(f)
-#print(prob)
+    plt.plot(range(f.shape[0]), f, "x")
+    delim = 5
+    plt.plot([0, f.shape[0]], [delim, delim])
+    plt.savefig("f-test", dpi=200)
+    plt.show()
+    plt.close()
 
-plt.plot(range(f.shape[0]), f, "x")
-delim = 5
-plt.plot([0, f.shape[0]], [delim, delim])
-plt.savefig("f-test", dpi=200)
-plt.show()
-plt.close()
+    kbest = SelectKBest(f_classif, k=4)
+    x_features = kbest.fit_transform(labeled_features, labeled_labels[:,1])
+    #returning the columns of the selected features
+    return kbest.get_support()
+    
 
-kbest = SelectKBest(f_classif, k=4)
-x_features = kbest.fit_transform(labeled_features, labeled_labels[:,1])
-x_id = kbest.get_support()
-features = features[:,x_id]
+def run_exercise():
+    features, labels = get_features_and_labels()
 
-#best k for each algorithm and performance plotting
-bestKmeans = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'kMeans')
-bestKhier = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'hierarchical')
-bestKspectral = cluster_evaluation(labeled_features[:,x_id], labeled_labels[:, 1], 'spectral')
+    #filtering by labelled data
+    labeled_labels, labeled_features = get_data_set(features, labels)
 
-#html reports
-predictY = KMeans(n_clusters=bestKmeans).fit_predict(features)
-report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, "kMeans.html")
-
-predictX = AgglomerativeClustering(n_clusters=bestKhier).fit_predict(features)
-report_clusters(np.array(list(range(0, predictX.shape[0]))), predictX, "hierarchical.html")     
-
-predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_qr').fit_predict(features)
-report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
+    selected_features_ix = select_best_features(labeled_labels, labeled_features)
+    features = features[:,selected_features_ix]
 
 
-label_lists = bissectingKmeans(features, 4)
-report_clusters_hierarchical(list(range(0, len(label_lists))), label_lists, "BissectingKMeans.html")
+    #best k for each algorithm and performance plotting
+    bestKmeans = cluster_evaluation(labeled_features[:,selected_features_ix], labeled_labels[:, 1], 'kMeans')
+    bestKhier = cluster_evaluation(labeled_features[:,selected_features_ix], labeled_labels[:, 1], 'hierarchical')
+    bestKspectral = cluster_evaluation(labeled_features[:,selected_features_ix], labeled_labels[:, 1], 'spectral')
+
+    #html reports
+    predictY = KMeans(n_clusters=bestKmeans).fit_predict(features)
+    report_clusters(np.array(list(range(0, predictY.shape[0]))), predictY, "kMeans.html")
+
+    predictX = AgglomerativeClustering(n_clusters=bestKhier).fit_predict(features)
+    report_clusters(np.array(list(range(0, predictX.shape[0]))), predictX, "hierarchical.html")     
+
+    predictZ = SpectralClustering(n_clusters=bestKspectral, assign_labels='cluster_qr').fit_predict(features)
+    report_clusters(np.array(list(range(0, predictZ.shape[0]))), predictZ, "spectral.html") 
+
+    label_lists = bissectingKmeans(features, 4)
+    report_clusters_hierarchical(list(range(0, len(label_lists))), label_lists, "BissectingKMeans.html")
+    
+    
+run_exercise()
