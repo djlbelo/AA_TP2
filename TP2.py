@@ -21,6 +21,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import SpectralClustering
 from sklearn.cluster import KMeans
+from sklearn.cluster import OPTICS
 from sklearn import metrics
 
 
@@ -60,6 +61,9 @@ def cluster_evaluation(data, labels, clusterType):
         elif clusterType == 'spectral':
             predict = SpectralClustering(n_clusters = k, assign_labels='cluster_qr').fit_predict(data)
             plot_title = 'Spectral Analysis'
+        elif clusterType == 'optics':
+            predict = OPTICS(min_samples=k).fit_predict(data)
+            plot_title = 'Optics Analysis'
         else:
             print("No Cluster type recognized")
             return
@@ -173,9 +177,8 @@ def get_features_and_labels():
 def select_best_features(labeled_labels, labeled_features):
     f, prob = f_classif(labeled_features, labeled_labels[:,1])
 
-    plt.plot(range(f.shape[0]), f, "x")
-    delim = 5
-    plt.plot([0, f.shape[0]], [delim, delim])
+    plt.title("F-test features analisys")
+    plt.plot(range(f.shape[0]), f, "o")
     plt.savefig("f-test", dpi=200)
     plt.show()
     plt.close()
@@ -183,8 +186,7 @@ def select_best_features(labeled_labels, labeled_features):
     kbest = SelectKBest(f_classif, k=4)
     x_features = kbest.fit_transform(labeled_features, labeled_labels[:,1])
     #returning the columns of the selected features
-    return kbest.get_support()
-    
+    return kbest.get_support()   
 
 def run_exercise():
     features, labels = get_features_and_labels()
@@ -214,5 +216,9 @@ def run_exercise():
     label_lists = bissectingKmeans(features, 4)
     report_clusters_hierarchical(list(range(0, len(label_lists))), label_lists, "BissectingKMeans.html")
     
+    bestMin_samples = cluster_evaluation(labeled_features[:,selected_features_ix], labeled_labels[:, 1], 'optics')
+    
+    optics_labels = OPTICS(min_samples=bestMin_samples).fit_predict(features)
+    report_clusters(np.array(list(range(0, optics_labels.shape[0]))), optics_labels, "optics.html") 
     
 run_exercise()
